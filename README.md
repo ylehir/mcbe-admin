@@ -44,6 +44,8 @@ python3 mcbe_admin.py [--lib <leveldb-mcpe-lib.so/dll>] [-r] [-p] [-c] [-w <worl
   2
   ```
   This file specifies a world with the overworld limited to -4096 to 4096 in x and z coordonates, while keeping the nether and the end intact.
+  x and z are real coordonates not chunk or region coordonates.
+  The script will convert the coordonates to chunk coordonates itself.
     
   Dimension can be :
   - 0 : overworld
