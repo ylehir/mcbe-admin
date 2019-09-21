@@ -6,6 +6,7 @@ from collections import namedtuple
 import struct
 import nbt
 import io
+import os
 import sys
 import logging
 import datetime
@@ -175,25 +176,33 @@ def main(args):
 	worldBorders = []
 	if args.worldBorders :
 		worldBorders = getWorldBordersFromFile(args.worldBorders)
-	with leveldb.DB(args.world) as db :
-		for entry in db:
-			if isinstance(entry, Row):
-				key = getChunkData(entry.key)
-				if not key :
-					continue
-				if args.worldBorders and (key.dimension, key.x, key.z) not in worldBorders:
-					logging.info("Removing d:%s x:%s z:%s", key.dimension, key.x, key.z)
-					db.delete(entry.key)
-					continue
-				if key.tag == 50 and args.removeEntities :
-					outBuff = filterEntities(entry.value, args)
-					if outBuff :
-						db.put(entry.key, outBuff.getvalue())
-				elif key.tag == 51 and args.pendingTicks:
-					removed, outBuff = fixPendingTicks(key, entry.value, args)
-					if removed:
-						logging.info("Removed %d pendingTicks in d:%s, x:%s, z:%s", removed, key.dimension, key.x, key.z)
-						db.put(entry.key, outBuff.getvalue())
+	world = ""
+	if args.world.endswith('db'):
+		world = args.world
+	else :
+		world = os.path.join(args.world, 'db')
+	if not args.worldBorders and not args.removeEntities and not args.pendingTicks and not args.compact :
+		logging.info("Nothing to do.")
+	with leveldb.DB(world) as db :
+		if args.worldBorders or args.removeEntities or args.pendingTicks :
+			for entry in db:
+				if isinstance(entry, Row):
+					key = getChunkData(entry.key)
+					if not key :
+						continue
+					if args.worldBorders and (key.dimension, key.x, key.z) not in worldBorders:
+						logging.info("Removing d:%s x:%s z:%s", key.dimension, key.x, key.z)
+						db.delete(entry.key)
+						continue
+					if key.tag == 50 and args.removeEntities :
+						outBuff = filterEntities(entry.value, args)
+						if outBuff :
+							db.put(entry.key, outBuff.getvalue())
+					elif key.tag == 51 and args.pendingTicks:
+						removed, outBuff = fixPendingTicks(key, entry.value, args)
+						if removed:
+							logging.info("Removed %d pendingTicks in d:%s, x:%s, z:%s", removed, key.dimension, key.x, key.z)
+							db.put(entry.key, outBuff.getvalue())
 		if args.compact:
 			logging.info("Compacting...")
 			db.compactRange(None,0,None,0)
