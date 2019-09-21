@@ -7,6 +7,8 @@ You will need python3 and a compiled dll or so of leveldb-mcpe (https://github.c
 
 ### Usage
 
+***Always make a backup or your world before runing this script !***
+
 python3 mcbe_admin.py [--lib <leveldb-mcpe-lib.so/dll>] [-r] [-p] [-c] [-w <worldBorderFile>] worldDirectory
  
 #### Library
