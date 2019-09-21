@@ -7,6 +7,13 @@ You will need python3 and a compiled dll or so of leveldb-mcpe (https://github.c
 
 ### Usage
 
+python3 mcbe_admin.py [--lib <leveldb-mcpe-lib.so/dll>] [-r] [-p] [-c] [-w <worldBorderFile>] worldDirectory
+ 
+#### Library
+ Option : --lib <libraryFile>
+ 
+ This is used to tell python where exactly is the compiled leveldb-mcpe lib
+
 #### Mob removal
  Option : -r
  
