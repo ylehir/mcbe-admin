@@ -96,22 +96,9 @@ def fixPendingTicks(key, value, args):
 		try :
 			tree = nbt.NBTFile(buffer=buff)
 			try :
-				undup = {}
-				removed = 0
-				for pending in tree['tickList']:
-					coord = (pending['x'].value, pending['y'].value, pending['z'].value, pending['blockState']['name'].value)
-					try :
-						if undup[coord]['time'].value < pending['time'].value:
-							undup[coord] = pending
-						removed += 1
-					except KeyError:
-						undup[coord] = pending
-
-				if removed :
-					modified += removed
+				if tree['tickList']:
+					modified += 1
 					newList = nbt.TAG_List(type=nbt.TAG_Compound, name='tickList')
-					for i, reallyPending in enumerate(undup.values()):
-						newList.insert(i, reallyPending)
 					tree['tickList'] = newList
 					tree.write_file(buffer=outBuff)
 			except KeyError:
