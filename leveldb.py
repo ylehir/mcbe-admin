@@ -832,7 +832,7 @@ class _IteratorDbImpl(object):
 def DB(path, bloom_filter_size=10, create_if_missing=False,
        error_if_exists=False, paranoid_checks=False,
        write_buffer_size=(4 * 1024 * 1024), max_open_files=1000,
-       block_cache_size=(8 * 1024 * 1024), block_size=(4 * 1024),
+       block_cache_size=(40 * 1024 * 1024), block_size=(4 * 1024),
        default_sync=False, default_verify_checksums=False,
        default_fill_cache=True, compression=4):
     """This is the expected way to open a database. Returns a DBInterface.
@@ -855,7 +855,7 @@ def DB(path, bloom_filter_size=10, create_if_missing=False,
     _ldb.leveldb_options_set_max_open_files(options, max_open_files)
     _ldb.leveldb_options_set_cache(options, cache.ref)
     _ldb.leveldb_options_set_compression(options, compression)
-    _ldb.leveldb_options_set_block_size(options, block_size)
+#    _ldb.leveldb_options_set_block_size(options, block_size)
 
     error = ctypes.POINTER(ctypes.c_char)()
     db = _ldb.leveldb_open(options, path.encode('utf-8'), ctypes.byref(error))
