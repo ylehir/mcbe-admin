@@ -3,6 +3,7 @@ import leveldb
 import argparse
 from leveldb import Row, setLdb
 from collections import namedtuple, defaultdict
+from enum import Enum
 import struct
 import nbt
 import io
@@ -21,6 +22,7 @@ def getArgParser():
 	parser.add_argument("--pendingTicks", "-p", action="store_true", help="Fix pending ticks.")
 	parser.add_argument("--worldBorders", "-w", type=str, help="CSV File containing coords of world borders. (See README for syntax)")
 	parser.add_argument("--findSpawners", "-f", action="store_true")
+	parser.add_argument("--dumpHSA", "-d", action="store_true")
 	parser.add_argument("--compact", "-c", action="store_true", help="Try to compact the db at the end.")
 	return parser
 
@@ -40,6 +42,83 @@ def getChunkData(key):
 	else :
 		return None
 	return Key(x, z, dimension, tag, subchunk)
+
+class Borders(object):
+	def __init__(self, borders):
+		self._borders = borders
+
+	def __contains__(self, coords):
+		for border in self._borders :
+			if coords in border:
+				return True
+				
+class Border(object):
+	def __init__(self, dimension, x, z, x1, z1):
+		self.dimension = dimension
+		if x > x1 :
+			self.x  = x1 // CHUNKSIZE
+			self.x1 = x  // CHUNKSIZE
+		else :
+			self.x  = x  // CHUNKSIZE
+			self.x1 = x1 // CHUNKSIZE
+		if z > z1 :
+			self.z  = z1 // CHUNKSIZE
+			self.z1 = z  // CHUNKSIZE
+		else :
+			self.z  = z  // CHUNKSIZE
+			self.z1 = z1 // CHUNKSIZE
+
+	def __str__(self):
+		return "d : %s, x : %s z : %s, x1 : %s z1 : %s"%(self.dimension, self.x, self.z, self.x1, self.z1)
+
+	def __contains__(self, coords):
+		dimension,x,z = coords
+		return dimension == self.dimension and x >= self.x and x <= self.x1 and z >= self.z and z <= self.z1
+
+class Position(object):
+	def __init__(self, x, y, z, dimension):
+		self.x = x
+		self.y = y
+		self.z = z
+		self.dimension = dimension
+
+	def __hash__(self):
+		return hash((self.x,self.y,self.z))
+
+	def __repr__(self):
+		return str(self)
+
+	def __str__(self):
+		return "(d:%s, x:%s, y:%s, z:%s)"%(self.dimension, self.x, self.y, self.z)
+
+	def __eq__(self, pos):
+		return self.dimension == pos.dimension and self.x == pos.x and self.y == pos.y and self.z == pos.z
+
+	def distance(self, pos):
+		if self.dimension != pos.dimension :
+			return sys.maxsize
+		return abs(self.x - pos.x) + abs(self.y - pos.y) + abs(self.z - pos.z)
+
+class HSAType(Enum):
+	FORTRESS=1
+	HUT=2
+	MONUMENT=3
+	UNKNOWN=4
+	OUTPOST=5
+	
+class HSA(object):
+
+	def __init__(self, dimension, bytes):
+		data = struct.unpack("<iiiiiib",bytes)
+		self.pos1 = Position(data[0], data[1], data[2], dimension)
+		self.pos2 = Position(data[3], data[4], data[5], dimension)
+		self.type = HSAType(data[6])
+		
+	def __repr__(self):
+		return str(self)
+		
+	def __str__(self):
+		return "Type : %s %s -> %s"%(self.type, self.pos1, self.pos2)
 
 entitiesFiler=( "+minecraft:drowned"
 		,   "+minecraft:guardian"
@@ -108,62 +187,6 @@ def fixPendingTicks(key, value, args):
 			break
 	return modified, outBuff
 
-class Borders(object):
-	def __init__(self, borders):
-		self._borders = borders
-
-	def __contains__(self, coords):
-		for border in self._borders :
-			if coords in border:
-				return True
-				
-class Position(object):
-	def __init__(self, x, y, z, dimension):
-		self.x = x
-		self.y = y
-		self.z = z
-		self.dimension = dimension
-
-	def __hash__(self):
-		return hash((self.x,self.y,self.z))
-
-	def __repr__(self):
-		return str(self)
-
-	def __str__(self):
-		return "(d:%s, x:%s, y:%s, z:%s)"%(self.dimension, self.x, self.y, self.z)
-
-	def __eq__(self, pos):
-		return self.dimension == pos.dimension and self.x == pos.x and self.y == pos.y and self.z == pos.z
-
-	def distance(self, pos):
-		if self.dimension != pos.dimension :
-			return sys.maxsize
-		return abs(self.x - pos.x) + abs(self.y - pos.y) + abs(self.z - pos.z)
-
-class Border(object):
-	def __init__(self, dimension, x, z, x1, z1):
-		self.dimension = dimension
-		if x > x1 :
-			self.x  = x1 // CHUNKSIZE
-			self.x1 = x  // CHUNKSIZE
-		else :
-			self.x  = x  // CHUNKSIZE
-			self.x1 = x1 // CHUNKSIZE
-		if z > z1 :
-			self.z  = z1 // CHUNKSIZE
-			self.z1 = z  // CHUNKSIZE
-		else :
-			self.z  = z  // CHUNKSIZE
-			self.z1 = z1 // CHUNKSIZE
-
-	def __str__(self):
-		return "d : %s, x : %s z : %s, x1 : %s z1 : %s"%(self.dimension, self.x, self.z, self.x1, self.z1)
-
-	def __contains__(self, coords):
-		dimension,x,z = coords
-		return dimension == self.dimension and x >= self.x and x <= self.x1 and z >= self.z and z <= self.z1
-
 def getWorldBordersFromFile(worldBorderFile):
 	borders = []
 	with open(worldBorderFile, 'r') as fd :
@@ -227,12 +250,12 @@ def main(args):
 		world = args.world
 	else :
 		world = os.path.join(args.world, 'db')
-	if not args.worldBorders and not args.removeEntities and not args.pendingTicks and not args.compact and not args.findSpawners :
+	if not args.worldBorders and not args.removeEntities and not args.pendingTicks and not args.compact and not args.dumpHSA and not args.findSpawners :
 		logging.info("Nothing to do.")
 	
 	spawners = {}
 	with leveldb.DB(world) as db :
-		if args.worldBorders or args.removeEntities or args.pendingTicks or args.findSpawners:
+		if args.worldBorders or args.removeEntities or args.pendingTicks or args.dumpHSA or args.findSpawners:
 			for entry in db:
 				if isinstance(entry, Row):
 					key = getChunkData(entry.key)
@@ -256,6 +279,14 @@ def main(args):
 						tree = nbt.NBTFile(buffer=buff)
 						if tree['id'] == "MobSpawner":
 							spawners[Position(tree['x'].value, tree['y'].value, tree['z'].value, key.dimension)] = tree
+					elif key.tag == 57 and args.dumpHSA:
+						if key.dimension != 0 :
+							continue
+						print(key)
+						amount = int.from_bytes(entry.value[0:4],"little")
+						for x in range(amount):
+							hsa = HSA(key.dimension, entry.value[x*25+4:(x+1)*25+4])
+							print(hsa)
 		if args.compact:
 			logging.info("Compacting...")
 			db.compactRange(None,0,None,0)
