@@ -2,7 +2,7 @@
 import leveldb
 import argparse
 from leveldb import Row, setLdb
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import struct
 import nbt
 import io
@@ -20,6 +20,7 @@ def getArgParser():
 	parser.add_argument("--removeEntities", "-r", action="store_true", help="Remove non persistent entities.")
 	parser.add_argument("--pendingTicks", "-p", action="store_true", help="Fix pending ticks.")
 	parser.add_argument("--worldBorders", "-w", type=str, help="CSV File containing coords of world borders. (See README for syntax)")
+	parser.add_argument("--findSpawners", "-f", action="store_true")
 	parser.add_argument("--compact", "-c", action="store_true", help="Try to compact the db at the end.")
 	return parser
 
@@ -115,6 +116,30 @@ class Borders(object):
 		for border in self._borders :
 			if coords in border:
 				return True
+				
+class Position(object):
+	def __init__(self, x, y, z, dimension):
+		self.x = x
+		self.y = y
+		self.z = z
+		self.dimension = dimension
+
+	def __hash__(self):
+		return hash((self.x,self.y,self.z))
+
+	def __repr__(self):
+		return str(self)
+
+	def __str__(self):
+		return "(d:%s, x:%s, y:%s, z:%s)"%(self.dimension, self.x, self.y, self.z)
+
+	def __eq__(self, pos):
+		return self.dimension == pos.dimension and self.x == pos.x and self.y == pos.y and self.z == pos.z
+
+	def distance(self, pos):
+		if self.dimension != pos.dimension :
+			return sys.maxsize
+		return abs(self.x - pos.x) + abs(self.y - pos.y) + abs(self.z - pos.z)
 
 class Border(object):
 	def __init__(self, dimension, x, z, x1, z1):
@@ -157,6 +182,40 @@ def getWorldBordersFromFile(worldBorderFile):
 			borders.append(border)
 	return Borders(borders)
 
+def findSpawners(spawners):
+	print("Finding double spawners")
+	pair = []
+	pairs = defaultdict(set)
+	posList = list(spawners.keys())
+	for i, pos in enumerate(spawners.keys()) :
+		for j in range(i, len(spawners)) :
+			pos2 = posList[j]
+			if pos != pos2 and pos.distance(pos2) < 32 :
+				pairs[pos].add(pos)
+				pairs[pos].add(pos2)
+				pairs[pos2].add(pos)
+				pairs[pos2].add(pos2)
+				pair.append((pos, pos2))
+	intersects = {}
+	for pos, values in pairs.items():
+		if len(values) == 1:
+			continue
+		for pos2 in values :
+			if pos == pos2 :
+				continue
+			inRange = pairs[pos2]
+			if (pos2,pos) in intersects : 
+				continue
+			key = (pos,pos2)
+			intersects[key] = values & inRange
+	for values in sorted(intersects.values(), key= lambda v : len(v), reverse=True):
+		for value in values : 
+			try :
+				print(value, spawners[value]['EntityIdentifier'])
+			except KeyError :
+				print(value, "Undefined")
+		print()
+	
 def main(args):
 	date = datetime.datetime.now()
 	logging.basicConfig(filename='mcbe-admin_%s.log'%date, filemode='w', datefmt='%m/%d/%Y %H:%M:%S', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -168,10 +227,12 @@ def main(args):
 		world = args.world
 	else :
 		world = os.path.join(args.world, 'db')
-	if not args.worldBorders and not args.removeEntities and not args.pendingTicks and not args.compact :
+	if not args.worldBorders and not args.removeEntities and not args.pendingTicks and not args.compact and not args.findSpawners :
 		logging.info("Nothing to do.")
+	
+	spawners = {}
 	with leveldb.DB(world) as db :
-		if args.worldBorders or args.removeEntities or args.pendingTicks :
+		if args.worldBorders or args.removeEntities or args.pendingTicks or args.findSpawners:
 			for entry in db:
 				if isinstance(entry, Row):
 					key = getChunkData(entry.key)
@@ -190,9 +251,17 @@ def main(args):
 						if removed:
 							logging.info("Removed %d pendingTicks in d:%s, x:%s, z:%s", removed, key.dimension, key.x, key.z)
 							db.put(entry.key, outBuff.getvalue())
+					elif key.tag == 49 and args.findSpawners:
+						buff = io.BytesIO(entry.value)
+						tree = nbt.NBTFile(buffer=buff)
+						if tree['id'] == "MobSpawner":
+							spawners[Position(tree['x'].value, tree['y'].value, tree['z'].value, key.dimension)] = tree
 		if args.compact:
 			logging.info("Compacting...")
 			db.compactRange(None,0,None,0)
+	
+	if args.findSpawners:
+		findSpawners(spawners)
 
 if __name__ == '__main__' :
 	parser = getArgParser()

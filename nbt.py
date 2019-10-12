@@ -376,6 +376,9 @@ class TAG_String(TAG, Sequence):
     # Printing and Formatting of tree
     def __repr__(self):
         return self.value
+		
+    def __eq__(self, other):
+        return self is other or self.value == other
 
 
 # == Collection Tags ==#
@@ -482,7 +485,6 @@ class TAG_Compound(TAG, MutableMapping):
         while True:
             type = TAG_Byte(buffer=buffer)
             if type.value == TAG_END:
-                # print("found tag_end")
                 break
             else:
                 name = TAG_String(buffer=buffer).value
