@@ -52,9 +52,48 @@ __email__ = "jt@spacemonkey.com"
 import bisect
 import ctypes
 import ctypes.util
+import struct
 import weakref
 import threading
 from collections import namedtuple
+
+class Key(object):
+
+	def __init__(self, x=None, z=None, dimension=None, tag=None, subchunk=None):
+		self.x = x
+		self.z = z
+		self.dimension = dimension
+		self.tag = tag
+		self.subchunk = subchunk
+
+	@staticmethod
+	def fromBytes(key):
+		dimension = 0
+		subchunk  = None
+		if len(key) == 9 :
+			x, z, tag = struct.unpack("=llb", key)
+		elif len(key) == 10 :
+			x, z, tag, subchunk = struct.unpack("=llbb", key)
+		elif len(key) == 13 :
+			x, z, dimension, tag = struct.unpack("=lllb", key)
+		elif len(key) == 14 :
+			x, z, dimension, tag, subchunk = struct.unpack("=lllbb", key)
+		else :
+			return None
+		return Key(x, z, dimension, tag, subchunk)
+
+
+	def toBytes(self):
+		if self.dimension is None :
+			if self.subchunk is None :
+				return struct.pack("=llb", self.x, self.z, self.tag)
+			else :
+				return struct.pack("=llbb", self.x, self.z, self.tag, self.subchunk)
+		else :
+			if self.subchunk is None :
+				return struct.pack("=lllb", self.x, self.z, self.dimension, self.tag )
+			else :
+				return struct.pack("=llllbb", self.x, self.z, self.dimension, self.tag, self.subchunk)
 
 _ldb = None
 

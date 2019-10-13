@@ -7,6 +7,7 @@ https://minecraft.gamepedia.com/NBT_format
 from struct import Struct, error as StructError
 from gzip import GzipFile
 from collections import MutableMapping, MutableSequence, Sequence
+from hsa import HSA, Position
 
 unicode = str
 basestring = str

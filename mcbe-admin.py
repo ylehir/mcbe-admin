@@ -1,10 +1,10 @@
 
 import leveldb
 import argparse
-from leveldb import Row, setLdb
+from leveldb import Row, setLdb, Key
 from collections import namedtuple, defaultdict
 from enum import Enum
-import struct
+from hsa import HSA
 import nbt
 import io
 import os
@@ -25,23 +25,6 @@ def getArgParser():
 	parser.add_argument("--dumpHSA", "-d", action="store_true")
 	parser.add_argument("--compact", "-c", action="store_true", help="Try to compact the db at the end.")
 	return parser
-
-Key = namedtuple('Key', ['x','z','dimension','tag','subchunk'])
-
-def getChunkData(key):
-	dimension = 0
-	subchunk  = None
-	if len(key) == 9 :
-		x, z, tag = struct.unpack("=llb", key)
-	elif len(key) == 10 :
-		x, z, tag, subchunk = struct.unpack("=llbb", key)
-	elif len(key) == 13 :
-		x, z, dimension, tag = struct.unpack("=lllb", key)
-	elif len(key) == 14 :
-		x, z, dimension, tag, subchunk = struct.unpack("=lllbb", key)
-	else :
-		return None
-	return Key(x, z, dimension, tag, subchunk)
 
 class Borders(object):
 	def __init__(self, borders):
@@ -74,51 +57,6 @@ class Border(object):
 	def __contains__(self, coords):
 		dimension,x,z = coords
 		return dimension == self.dimension and x >= self.x and x <= self.x1 and z >= self.z and z <= self.z1
-
-class Position(object):
-	def __init__(self, x, y, z, dimension):
-		self.x = x
-		self.y = y
-		self.z = z
-		self.dimension = dimension
-
-	def __hash__(self):
-		return hash((self.x,self.y,self.z))
-
-	def __repr__(self):
-		return str(self)
-
-	def __str__(self):
-		return "(d:%s, x:%s, y:%s, z:%s)"%(self.dimension, self.x, self.y, self.z)
-
-	def __eq__(self, pos):
-		return self.dimension == pos.dimension and self.x == pos.x and self.y == pos.y and self.z == pos.z
-
-	def distance(self, pos):
-		if self.dimension != pos.dimension :
-			return sys.maxsize
-		return abs(self.x - pos.x) + abs(self.y - pos.y) + abs(self.z - pos.z)
-
-class HSAType(Enum):
-	FORTRESS=1
-	HUT=2
-	MONUMENT=3
-	UNKNOWN=4
-	OUTPOST=5
-	
-class HSA(object):
-
-	def __init__(self, dimension, bytes):
-		data = struct.unpack("<iiiiiib",bytes)
-		self.pos1 = Position(data[0], data[1], data[2], dimension)
-		self.pos2 = Position(data[3], data[4], data[5], dimension)
-		self.type = HSAType(data[6])
-		
-	def __repr__(self):
-		return str(self)
-		
-	def __str__(self):
-		return "Type : %s %s -> %s"%(self.type, self.pos1, self.pos2)
 
 entitiesFiler=( "+minecraft:drowned"
 		,   "+minecraft:guardian"
@@ -258,7 +196,7 @@ def main(args):
 		if args.worldBorders or args.removeEntities or args.pendingTicks or args.dumpHSA or args.findSpawners:
 			for entry in db:
 				if isinstance(entry, Row):
-					key = getChunkData(entry.key)
+					key = Key.fromBytes(entry.key)
 					if not key :
 						continue
 					if args.worldBorders and (key.dimension, key.x, key.z) not in worldBorders:
@@ -282,10 +220,9 @@ def main(args):
 					elif key.tag == 57 and args.dumpHSA:
 						if key.dimension != 0 :
 							continue
-						print(key)
 						amount = int.from_bytes(entry.value[0:4],"little")
 						for x in range(amount):
-							hsa = HSA(key.dimension, entry.value[x*25+4:(x+1)*25+4])
+							hsa = HSA.fromBytes(entry.value[x*25+4:(x+1)*25+4], key.dimension)
 							print(hsa)
 		if args.compact:
 			logging.info("Compacting...")
