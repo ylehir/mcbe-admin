@@ -217,13 +217,49 @@ def main(args):
 						tree = nbt.NBTFile(buffer=buff)
 						if tree['id'] == "MobSpawner":
 							spawners[Position(tree['x'].value, tree['y'].value, tree['z'].value, key.dimension)] = tree
-					elif key.tag == 57 and args.dumpHSA:
+					elif key.tag == 57 and (args.dumpHSA or args.compact):
 						if key.dimension != 0 :
 							continue
 						amount = int.from_bytes(entry.value[0:4],"little")
+						newAmount = 0
+						newData = b""
 						for x in range(amount):
 							hsa = HSA.fromBytes(entry.value[x*25+4:(x+1)*25+4], key.dimension)
+							if args.compact and hsa.type != HSAType.UNKNOWN:
+								newAmount += 1
+								newData += entry.value[x*25+4:(x+1)*25+4]
 							print(hsa)
+						if args.compact and newAmount != amount :
+							newData = newAmount.to_bytes(4,"little") + newData
+							db.put(entry.key, newData)
+					elif key.tag == 47 :
+							palette = { 0x2 : (32,1,False) , 0x4 : (16,2,False), 0x6 : (10,3,True) , 0x8 : (8,4,False) , 0xa : (6,5,True) , 0xc: (5,6,True) , 0x10: (4,8,False) , 0x20 : (2,16,False) }
+							pal = int(entry.value[2])
+							chunkPalFormat = palette[pal]
+							size = len(entry.value)
+							end = (4096//chunkPalFormat[0])*4 + int(chunkPalFormat[2])*4
+					#                   print(key, len(entry.value), pal, chunkPalFormat, end+7)
+							buff = io.BytesIO(entry.value[end+7:])
+							chunkPalette = []
+							while True :
+								try :
+									tree = nbt.NBTFile(buffer=buff)
+					#                           print(tree.pretty_tree())
+									chunkPalette.append(tree)
+								except nbt.MalformedFileError:
+									break
+							data = entry.value[3:end]
+							usedId = set()
+							for index in range(0,end,4):
+								value = int.from_bytes(data[index:index+3], byteorder="big")
+								for blockId in range(0,32, chunkPalFormat[1]):
+									blockVal = (value >> blockId) & ((1<<chunkPalFormat[1])-1)
+					#                           print(blockId, blockVal, chunkPalette[blockVal]["name"])
+							usedId.add(blockVal)
+							if len(usedId) > len(chunkPalette):
+								print(key, len(entry.value), pal, chunkPalFormat, end+7)
+								print(usedId, len(chunkPalette), int.from_bytes(entry.value[end+3:end+7], "little"))
+
 		if args.compact:
 			logging.info("Compacting...")
 			db.compactRange(None,0,None,0)
