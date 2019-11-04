@@ -4,7 +4,7 @@ import argparse
 from leveldb import Row, setLdb, Key
 from collections import namedtuple, defaultdict
 from enum import Enum
-from hsa import HSA
+from hsa import HSA,Position
 import nbt
 import io
 import os
@@ -232,7 +232,7 @@ def main(args):
 						if args.compact and newAmount != amount :
 							newData = newAmount.to_bytes(4,"little") + newData
 							db.put(entry.key, newData)
-					elif key.tag == 47 :
+					elif key.tag == 47 and args.compact :
 							palette = { 0x2 : (32,1,False) , 0x4 : (16,2,False), 0x6 : (10,3,True) , 0x8 : (8,4,False) , 0xa : (6,5,True) , 0xc: (5,6,True) , 0x10: (4,8,False) , 0x20 : (2,16,False) }
 							pal = int(entry.value[2])
 							chunkPalFormat = palette[pal]

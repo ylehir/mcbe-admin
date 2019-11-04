@@ -56,14 +56,14 @@ def main(args):
 					type)
 				print(hsa)
 
-				alreayData = db.get(bytesKey)
-				if alreayData is None :
+				alreadyData = db.get(bytesKey)
+				if alreadyData is None :
 					data = (1).to_bytes(4,"little")
 					data += hsa.toBytes()
 				else :
 					amount = int.from_bytes(alreadyData[0:4],"little")
 					data = (amount+1).to_bytes(4,"little") 
-					data += alreayData[4:]
+					data += alreadyData[4:]
 					data += hsa.toBytes()
 				db.put(bytesKey, data)
 

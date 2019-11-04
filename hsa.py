@@ -1,6 +1,8 @@
 
 from enum import Enum
 import struct
+import sys
+from math import pow, sqrt, ceil
 
 class Rectangle(object):
 	def __init__(self, x, y, x1, y1):
@@ -47,7 +49,8 @@ class Position(object):
 	def distance(self, pos):
 		if self.dimension != pos.dimension :
 			return sys.maxsize
-		return abs(self.x - pos.x) + abs(self.y - pos.y) + abs(self.z - pos.z)
+#		return math.ceil(math.dist(self,pos))
+		return ceil(sqrt(pow(self.x - pos.x,2) + pow(self.y - pos.y,2) + pow(self.z - pos.z,2)))
 
 class Dimension(Enum):
 	OVERWORLD=0
@@ -72,7 +75,7 @@ class HSAType(Enum):
 	MONUMENT=3
 	UNKNOWN=4
 	OUTPOST=5
-	UNKNOWN=6
+	UNKNOWN2=6
 
 	@classmethod
 	def parse(cls, value):

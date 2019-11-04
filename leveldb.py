@@ -82,6 +82,8 @@ class Key(object):
 			return None
 		return Key(x, z, dimension, tag, subchunk)
 
+	def __repr__(self):
+		return "d: %s, x: %s, z:%s, tag:%s"%(self.dimension, self.x, self.z, self.tag)
 
 	def toBytes(self):
 		if self.dimension is None :
