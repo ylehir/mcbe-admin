@@ -144,7 +144,7 @@ def getWorldBordersFromFile(worldBorderFile):
 	return Borders(borders)
 
 def findSpawners(spawners):
-	print("Finding double spawners")
+	print("Finding spawner clusters")
 	pair = []
 	pairs = defaultdict(set)
 	posList = list(spawners.keys())
@@ -165,17 +165,66 @@ def findSpawners(spawners):
 			if pos == pos2 :
 				continue
 			inRange = pairs[pos2]
-			if (pos2,pos) in intersects : 
+			if (pos2,pos) in intersects :
 				continue
 			key = (pos,pos2)
 			intersects[key] = values & inRange
-	for values in sorted(intersects.values(), key= lambda v : len(v), reverse=True):
-		for value in values : 
-			try :
-				print(value, spawners[value]['EntityIdentifier'])
-			except KeyError :
-				print(value, "Undefined")
-		print()
+	for key, values in intersects.items():
+		minX = sys.maxsize
+		maxX = -sys.maxsize
+		minY = sys.maxsize
+		maxY = -sys.maxsize
+		minZ = sys.maxsize
+		maxZ = -sys.maxsize
+		for value in values :
+			if value.x < minX :
+				minX = value.x
+			if value.y < minY:
+				minY = value.y
+			if value.z < minZ :
+				minZ = value.z
+			if value.x > maxX :
+				maxX = value.x
+			if value.y > maxY :
+				maxY = value.y
+			if value.z > maxZ :
+				maxZ = value.z
+		# scan all the spots !
+		inRange = {}
+		done = False
+		for x in range(minX,maxX):
+			for y in range(minY, maxY):
+				for z in range(minZ, maxZ):
+					pos = Position(x,y,z,0)
+					inRange[pos] = set()
+					for value in values :
+						if pos.distance(value) < 32 :
+							inRange[pos].add(value)
+							if len(inRange[pos]) == len(values):
+								done = pos
+								break
+					if done:
+						break
+				if done :
+					break
+			if done :
+				break
+		if done :
+			for spawnerPos in inRange[done] :
+				try :
+					print(value, spawners[value]['EntityIdentifier'])
+				except KeyError :
+					print(value, "Undefined")
+			print("Afk spot : ", done)
+		else :
+			for pos, values in sorted(inRange.items(), key= lambda k,v : len(v), reverse=True):
+				for value in values :
+					try :
+						print(value, spawners[value]['EntityIdentifier'])
+					except KeyError :
+						print(value, "Undefined")
+				print("Afk spot : ", pos)
+				break
 	
 def main(args):
 	date = datetime.datetime.now()
