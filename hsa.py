@@ -46,6 +46,9 @@ class Position(object):
 	def __eq__(self, pos):
 		return self.dimension == pos.dimension and self.x == pos.x and self.y == pos.y and self.z == pos.z
 
+	def __lt__(self, pos):
+		return self.x < pos.x or self.y < pos.y or self.z < pos.z
+
 	def distance(self, pos):
 		if self.dimension != pos.dimension :
 			return sys.maxsize
