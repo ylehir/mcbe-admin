@@ -10,7 +10,6 @@ import nbt
 import io
 import os
 import sys
-import logging
 import datetime
 
 CHUNKSIZE=16
@@ -141,14 +140,12 @@ def getWorldBordersFromFile(worldBorderFile):
 				x1 = sys.maxsize
 				z1 = sys.maxsize
 			border = Border(int(dimension),int(x), int(z), int(x1), int(z1))
-			logging.info("Border : %s", border)
 			borders.append(border)
 	return Borders(borders)
 
 	
 def main(args):
 	date = datetime.datetime.now()
-	logging.basicConfig(filename='mcbe-admin_%s.log'%date, filemode='w', datefmt='%m/%d/%Y %H:%M:%S', format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 	worldBorders = []
 	if args.worldBorders :
 		worldBorders = getWorldBordersFromFile(args.worldBorders)
@@ -157,8 +154,6 @@ def main(args):
 		world = args.world
 	else :
 		world = os.path.join(args.world, 'db')
-	if not args.worldBorders and not args.removeEntities and not args.pendingTicks and not args.compact and not args.dumpHSA and not args.findSpawners :
-		logging.info("Nothing to do.")
 	
 	spawners = {}
 	ships = {}
@@ -173,10 +168,9 @@ def main(args):
 				if not key :
 					continue
 #				if args.compact and key.tag not in (45,46,47,48,49,50,51,52,53,54,118):
-#					logging.info("Removing unknown key in d:%s, x:%s, z:%s", key.dimension, key.x, key.z)
 #					db.delete(entry.key)
 				if args.worldBorders and (key.dimension, key.x, key.z) not in worldBorders:
-					logging.info("Removing d:%s x:%s z:%s", key.dimension, key.x, key.z)
+					print("Removing d:%s x:%s z:%s"%( key.dimension, key.x, key.z))
 					db.delete(entry.key)
 					continue
 				if key.tag == 50 and args.removeEntities :
@@ -186,7 +180,7 @@ def main(args):
 				elif key.tag == 51 and args.pendingTicks:
 					removed, outBuff = fixPendingTicks(key, entry.value, args)
 					if removed:
-						logging.info("Removed %d pendingTicks in d:%s, x:%s, z:%s", removed, key.dimension, key.x, key.z)
+						print("Removed %d pendingTicks in d:%s, x:%s, z:%s"%( removed, key.dimension, key.x, key.z))
 						db.put(entry.key, outBuff.getvalue())
 				elif key.tag == 49 and args.findSpawners:
 					buff = io.BytesIO(entry.value)
@@ -201,13 +195,6 @@ def main(args):
 					for x in range(amount):
 						hsa = HSA.fromBytes(entry.value[x*25+4:(x+1)*25+4], key.dimension)
 						print(hsa)
-#						if args.compact and hsa.type != HSAType.UNKNOWN:
-#							newAmount += 1
-#							newData += entry.value[x*25+4:(x+1)*25+4]
-#					if args.compact and newAmount != amount :
-#						logging.info("Removing HSA in d:%s, x:%s, z:%s", key.dimension, key.x, key.z)
-#						newData = newAmount.to_bytes(4,"little") + newData
-#						db.put(entry.key, newData)
 #				elif key.tag == 47 and args.compact :
 #						palette = { 0x2 : (32,1,False) , 0x4 : (16,2,False), 0x6 : (10,3,True) , 0x8 : (8,4,False) , 0xa : (6,5,True) , 0xc: (5,6,True) , 0x10: (4,8,False) , 0x20 : (2,16,False) }
 #						pal = int(entry.value[2])
@@ -237,7 +224,6 @@ def main(args):
 #							print(usedId, len(chunkPalette), int.from_bytes(entry.value[end+3:end+7], "little"))
 
 		if args.compact:
-			logging.info("Compacting...")
 			db.compactRange(None,0,None,0)
 	
 	if args.findSpawners:
