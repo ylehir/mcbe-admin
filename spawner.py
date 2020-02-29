@@ -83,19 +83,18 @@ def findSpawners(spawners, nbProcess):
 		if len(cluster) > 1 :
 			clusters.add(tuple(sorted(cluster)))
 	print("Analyzing clusters")
-#	with Pool(nbProcess) as p :
-	analyzed = []
-	for cluster in clusters :
-		analyzed.append(analyzeCluster(cluster))
-
-#		analyzed = p.map(analyzeCluster, clusters)
-	for cluster in sorted(analyzed, key=lambda x : len(x[1]), reverse=True):
-		afkPos, realCluster = cluster
-		print("******* New cluster (%d) *******"%(len(realCluster)))
-		for spawnerPos in realCluster :
-			try :
-				print(spawnerPos, spawners[spawnerPos]['EntityIdentifier'])
-			except KeyError :
-				print(spawnerPos, "Undefined")
-		print("Afk spot : ", afkPos)
+	with Pool(nbProcess) as p :
+#	analyzed = []
+#	for cluster in clusters :
+#		analyzed.append(analyzeCluster(cluster))
+		analyzed = p.map(analyzeCluster, clusters)
+		for cluster in sorted(analyzed, key=lambda x : len(x[1]), reverse=True):
+			afkPos, realCluster = cluster
+			print("******* New cluster (%d) *******"%(len(realCluster)))
+			for spawnerPos in realCluster :
+				try :
+					print(spawnerPos, spawners[spawnerPos]['EntityIdentifier'])
+				except KeyError :
+					print(spawnerPos, "Undefined")
+			print("Afk spot : ", afkPos)
 
