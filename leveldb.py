@@ -49,6 +49,7 @@
 __author__ = "JT Olds"
 __email__ = "jt@spacemonkey.com"
 
+import os
 import bisect
 import ctypes
 import ctypes.util
@@ -102,7 +103,7 @@ _ldb = None
 def setLdb(levelDb=None):
 	global _ldb
 	if levelDb is None :
-		levelDb = ctypes.util.find_library('leveldb')
+		levelDb = os.path.join(os.path.dirname(os.path.abspath(__file__)), "libs", "leveldb.dll")
 	_ldb = ctypes.CDLL(levelDb)
 	assert _ldb is not None
 
