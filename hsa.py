@@ -118,4 +118,4 @@ class HSA(object):
 		return str(self)
 		
 	def __str__(self):
-		return "Type : %s %s -> %s"%(self.type, self.pos1, self.pos2)
+		return "Type : %s %s -> %s"%(self.type.name, self.pos1, self.pos2)
