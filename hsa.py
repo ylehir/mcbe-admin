@@ -114,8 +114,13 @@ class HSA(object):
 							  		 , self.pos2.x, self.pos2.y, self.pos2.z
 								     , self.type.value)
 
+	def getHSS(self):
+		yMaxOffset = -3 if self.type in (HSAType.HUT, HSAType.OUTPOST) else 0 
+		return "x:%s y:%s-%s z:%s"%((self.pos2.x-self.pos1.x)//2+self.pos1.x, self.pos1.y , self.pos2.y+yMaxOffset,  (self.pos2.z-self.pos1.z)//2+self.pos1.z )
+	
 	def __repr__(self):
 		return str(self)
 		
 	def __str__(self):
-		return "Type : %s %s -> %s"%(self.type.name, self.pos1, self.pos2)
+		return "Type : %s %s -> %s = %s"%(self.type.name, self.pos1, self.pos2, self.getHSS() )
+
