@@ -91,7 +91,7 @@ def findSpawners(spawners, nbProcess):
 		for cluster in sorted(analyzed, key=lambda x : len(x[1]), reverse=True):
 			afkPos, realCluster = cluster
 			print("******* New cluster (%d) *******"%(len(realCluster)))
-			for spawnerPos in realCluster :
+			for spawnerPos in sorted(realCluster) :
 				try :
 					print(spawnerPos, spawners[spawnerPos]['EntityIdentifier'])
 				except KeyError :

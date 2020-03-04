@@ -104,7 +104,6 @@ def setLdb(levelDb=None):
 	global _ldb
 	if levelDb is None :
 		levelDb = os.path.join(os.path.dirname(os.path.abspath(__file__)), "libs", "leveldb.dll")
-		print(levelDb)
 	_ldb = ctypes.CDLL(levelDb)
 	assert _ldb is not None
 

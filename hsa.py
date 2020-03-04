@@ -47,7 +47,7 @@ class Position(object):
 		return self.dimension == pos.dimension and self.x == pos.x and self.y == pos.y and self.z == pos.z
 
 	def __lt__(self, pos):
-		return self.x < pos.x or self.y < pos.y or self.z < pos.z
+		return self.x < pos.x or self.z < pos.z or self.y < pos.y
 
 	def distance(self, pos):
 		if self.dimension != pos.dimension :
