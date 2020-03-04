@@ -11,7 +11,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 	offset := 16*12*2
 	start := -4096
 	stop := 4096
-	startOffset := 16*12
+	startOffset := 0
 	Loop
 	{
 		currX := start + startOffset
