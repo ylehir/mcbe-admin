@@ -104,6 +104,12 @@ class _TAG_Numeric(TAG):
     def __bool__(self):
         return bool(self.value)
 
+    def __int__(self):
+        return int(self.value)
+
+    def __float__(self):
+        return float(self.value)
+
     def _render_buffer(self, buffer):
         buffer.write(self.fmt.pack(self.value))
 
