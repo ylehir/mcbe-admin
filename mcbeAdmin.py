@@ -39,10 +39,12 @@ def fixPendingTicks(key, value, args):
 			tree = nbt.NBTFile(buffer=buff)
 			try :
 				if tree['tickList']:
-					modified += 1
-					newList = nbt.TAG_List(type=nbt.TAG_Compound, name='tickList')
-					tree['tickList'] = newList
-					tree.write_file(buffer=outBuff)
+					print(key.x*16, key.z*16, len(tree['tickList']))
+					print(tree.pretty_tree())
+#					modified += 1
+#					newList = nbt.TAG_List(type=nbt.TAG_Compound, name='tickList')
+#					tree['tickList'] = newList
+#					tree.write_file(buffer=outBuff)
 			except KeyError:
 				pass
 		except nbt.MalformedFileError:
@@ -81,17 +83,18 @@ def main(args):
 					if outBuff :
 						db.put(entry.key, outBuff.getvalue())
 				elif key.tag == 51 and args.pendingTicks:
-					removed, outBuff = fixPendingTicks(key, entry.value, args)
-					if removed:
-						print("Removed %d pendingTicks in d:%s, x:%s, z:%s"%( removed, key.dimension, key.x, key.z))
-						db.put(entry.key, outBuff.getvalue())
+					db.delete(entry.key)
+#					removed, outBuff = fixPendingTicks(key, entry.value, args)
+#					if removed:
+#						print("Removed %d pendingTicks in d:%s, x:%s, z:%s"%( removed, key.dimension, key.x, key.z))
+#						db.put(entry.key, outBuff.getvalue())
 				elif key.tag == 49 and args.findSpawners:
 					buff = io.BytesIO(entry.value)
 					if entry.value :
 						tree = nbt.NBTFile(buffer=buff)
 						if tree['id'] == "MobSpawner":
 							spawners[Position(tree['x'].value, tree['y'].value, tree['z'].value, key.dimension)] = tree
-				elif key.tag == 57 and (args.dumpHSA or args.compact):
+				elif key.tag == 57 and args.dumpHSA:
 					amount = int.from_bytes(entry.value[0:4],"little")
 #					newAmount = 0
 #					newData = b""
